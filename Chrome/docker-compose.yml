@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+
+  chrome:
+    image: overclockedllama/docker-chromium
+    ports:
+      - "5800:5800"
+    volumes:
+      - "./config:/config:rw"
+    shm_size: '2gb'
+    restart: always
