@@ -1,0 +1,71 @@
+version: '3.6'
+
+services:
+
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    restart: always
+    environment:
+      - INFLUXDB_DB=influx
+      - INFLUXDB_ADMIN_USER=someuser
+      - INFLUXDB_ADMIN_PASSWORD=supersecret
+    ports:
+      - '8086:8086'
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+    labels:
+      logging: "promtail"
+      logging_jobname: "containerlogs"
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana-server
+    restart: always
+    depends_on:
+      - influxdb
+    environment:
+      - GF_SECURITY_ADMIN_USER=someuser
+      - GF_SECURITY_ADMIN_PASSWORD=supersecret
+      - GF_INSTALL_PLUGINS=
+    links:
+      - influxdb
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+    labels:
+      logging: "promtail"
+      logging_jobname: "containerlogs"
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - 3100:3100
+    volumes:
+      - ./loki/config/loki-config.yml:/etc/loki/loki-config.yml
+    command: -config.file=/etc/loki/local-config.yaml
+    labels:
+      logging: "promtail"
+      logging_jobname: "containerlogs"
+
+  promtail:
+    image:  grafana/promtail:latest
+    container_name: promtail_docker
+    restart: unless-stopped
+    volumes:
+      - ./promtail/config/promtail.yaml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/docker-config.yaml
+    depends_on:
+      - loki
+    labels:
+      logging: "promtail"
+      logging_jobname: "containerlogs"
+
+volumes:
+  grafana_data: {}
+  influxdb_data: {}
