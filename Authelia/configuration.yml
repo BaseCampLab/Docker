@@ -1,0 +1,264 @@
+##############################################################################
+#                           Authelia configuration                           #
+##############################################################################
+
+server.host: 0.0.0.0
+server.port: 9091 # if you need this changed make sure it reflects also in the docker-compose.yml
+log.level: debug
+jwt_secret: secretkey
+default_redirection_url: https://auth.example.com
+totp:
+  issuer: example.com
+  period: 30
+  skew: 1
+
+certificates_directory: /config/certs/
+#duo_api:     ## If you want push notifictions of login attempts you can pay for this feature
+#  hostname: api-123456789.example.com
+#  integration_key: ABCDEF
+#  secret_key: yet-another-long-string-of-characters-and-numbers-and-symbols
+
+# The authentication backend to use for verifying user passwords
+# and retrieve information such as email address and groups
+# users belong to.
+#
+# There are two supported backends: `ldap` and `file`.
+authentication_backend:
+  # LDAP backend configuration.
+  #
+  # This backend allows Authelia to be scaled to more
+  # than one instance and therefore is recommended for
+  # production.
+  ldap:
+
+    implementation: activedirectory
+    # The url of the ldap server
+    url: ldaps://example.com:636
+
+    # The base dn for every entries
+    base_dn: dc=basedn,dc=example,dc=com
+
+    username_attribute: sAMAccountName
+
+    # An additional dn to define the scope to all users
+    additional_users_dn: ou=users,ou=basedn
+
+    # The users filter used to find the user DN
+    # {0} is a matcher replaced by username.
+    # 'cn={0}' by default.
+    users_filter: (&(|({username_attribute}={input})({mail_attribute}={input}))(sAMAccountType=805306368)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(!(pwdLastSet=0)))
+
+    # An additional dn to define the scope of groups
+    # additional_groups_dn: ou=Authelia,ou=Groups,ou=BaseCamp
+
+    # The groups filter used for retrieving groups of a given user.
+    # {0} is a matcher replaced by username.
+    # {dn} is a matcher replaced by user DN.
+    # 'member={dn}' by default.
+    groups_filter: (&(member:1.2.840.113556.1.4.1941:={dn})(objectClass=group)(objectCategory=group))
+
+    # The attribute holding the name of the group
+    group_name_attribute: cn
+
+    # The attribute holding the mail address of the user
+    mail_attribute: mail
+
+    ## The attribute holding the display name of the user. This will be used to greet an authenticated user.
+    display_name_attribute: displayname
+
+    # The username and password of the admin user.
+    user: CN=username,ou=users,ou=basedn,DC=example,DC=com
+    password: supersecretpassword
+
+    # File backend configuration.
+    #
+    # With this backend, the users database is stored in a file
+    # which is updated when users reset their passwords.
+    # Therefore, this backend is meant to be used in a dev environment
+    # and not in production since it prevents Authelia to be scaled to
+    # more than one instance.
+    #
+    ## file:
+    ##   path: /etc/authelia/users_database.yml
+
+
+access_control:
+  default_policy: deny
+  rules:
+    # Rules applied to everyone
+    - domain: "auth.example.com"
+      policy: bypass
+#    - domain: "sonarr.cbaselab.com"
+#      policy: two_factor
+#      networks:
+#        - 192.168.1.0/24
+#   - domain: # Proxies needing 2 factor below
+#       - "proxmox.yourdomain.com"
+#     policy: two_factor
+#      networks:
+#         - 192.168.1.0/24
+
+session:
+  name: authelia_session
+  # This secret can also be set using the env variables AUTHELIA_SESSION_SECRET_FILE
+  secret: supersecret
+  expiration: 3600 # 1 hour
+  inactivity: 7200 # 2 hours
+  domain: example.com # Needs to be your root domain
+
+  redis:
+    host: authelia_redis_1
+    port: 6379
+    # This secret can also be set using the env variables AUTHELIA_SESSION_REDIS_PASSWORD_FILE
+    # password: authelia
+
+regulation:
+  max_retries: 5
+  find_time: 2m
+  ban_time: 10m
+theme: dark   # options: dark, light
+
+storage:
+  encryption_key: supersecretkey
+  local:
+      path: /config/db.sqlite3
+
+notifier:
+  ## You can disable the notifier startup check by setting this to true.
+  disable_startup_check: false
+
+  ##
+  ## File System (Notification Provider)
+  ##
+  ## Important: Kubernetes (or HA) users must read https://www.authelia.com/docs/features/statelessness.html
+  ##
+  # filesystem:
+  #   filename: /config/notification.txt
+
+  ##
+  ## SMTP (Notification Provider)
+  ##
+  ## Use a SMTP server for sending notifications. Authelia uses the PLAIN or LOGIN methods to authenticate.
+  ## [Security] By default Authelia will:
+  ##   - force all SMTP connections over TLS including unauthenticated connections
+  ##      - use the disable_require_tls boolean value to disable this requirement
+  ##        (only works for unauthenticated connections)
+  ##   - validate the SMTP server x509 certificate during the TLS handshake against the hosts trusted certificates
+  ##     (configure in tls section)
+  smtp:
+    ## The SMTP host to connect to.
+    host:  smtp.example.com
+
+    ## The port to connect to the SMTP host on.
+    port: 587
+
+    ## The connection timeout.
+    timeout: 5s
+
+    ## The username used for SMTP authentication.
+    username: user@example.com
+
+    ## The password used for SMTP authentication.
+    ## Can also be set using a secret: https://www.authelia.com/docs/configuration/secrets.html
+    password: supersecret
+
+    ## The address to send the email FROM.
+    sender: user@example.com
+
+    ## HELO/EHLO Identifier. Some SMTP Servers may reject the default of localhost.
+    identifier: localhost
+
+    ## Subject configuration of the emails sent. {title} is replaced by the text from the notifier.
+    subject: "[Authelia] {title}"
+
+    ## This address is used during the startup check to verify the email configuration is correct.
+    ## It's not important what it is except if your email server only allows local delivery.
+    startup_check_address: user@example.com
+
+    ## By default we require some form of TLS. This disables this check though is not advised.
+    disable_require_tls: false
+
+    ## Disables sending HTML formatted emails.
+    disable_html_emails: false
+
+    tls:
+      ## Server Name for certificate validation (in case you are using the IP or non-FQDN in the host option).
+      server_name: smtp.example.com
+
+      ## Skip verifying the server certificate (to allow a self-signed certificate).
+      ## In preference to setting this we strongly recommend you add the public portion of the certificate to the
+      ## certificates directory which is defined by the `certificates_directory` option at the top of the config.
+      skip_verify: false
+
+      ## Minimum TLS version for either StartTLS or SMTPS.
+      minimum_version: TLS1.2
+
+identity_providers:
+  oidc:
+    hmac_secret: supersecret
+    issuer_private_key: |
+      -----BEGIN RSA PRIVATE KEY-----
+      
+      -----END RSA PRIVATE KEY-----
+    access_token_lifespan: 1h
+    authorize_code_lifespan: 1m
+    id_token_lifespan: 1h
+    refresh_token_lifespan: 90m
+    enable_client_debug_messages: false
+    clients:
+      - id: nextcloud
+        description: nextcloud
+        secret: supersecretkey
+        ## Sets the client to public. This should typically not be set, please see the documentation for usage.
+      # public: false
+        authorization_policy: two_factor
+        audience: []
+        scopes:
+          - openid
+          - groups
+          - email
+          - profile
+        redirect_uris:
+          - https://nextcloud.example.com/apps/oidc_login/oidc
+        ## Grant Types configures which grants this client can obtain.
+        ## It's not recommended to define this unless you know what you're doing.
+        grant_types:
+          - refresh_token
+          - authorization_code
+
+        ## Response Types configures which responses this client can be sent.
+        ## It's not recommended to define this unless you know what you're doing.
+        response_types:
+          - code
+        #response_modes:
+        #  - form_post
+        #  - query
+        #  - fragment
+        ## The algorithm used to sign userinfo endpoint responses for this client, either none or RS256.
+        userinfo_signing_algorithm: none
+
+      - id: bookstack
+        description: BookStack
+        secret: supersecret
+        public: false
+        authorization_policy: one_factor
+        redirect_uris:
+          - https://bookstack.example.com/oidc/callback
+        scopes:
+          - openid
+          - profile
+          - email
+        userinfo_signing_algorithm: none
+
+      - id: gitea
+        description: Gitea
+        secret: supersecret
+        public: false
+        authorization_policy: one_factor
+        redirect_uris:
+          - https://gitea.example.com/user/oauth2/authelia/callback
+        scopes:
+          - openid
+          - email
+          - profile
+        userinfo_signing_algorithm: none
