@@ -1,0 +1,34 @@
+version: "2"
+
+services:
+
+  calibre:
+    image: ghcr.io/linuxserver/calibre
+    container_name: calibre
+    environment:
+      - PUID=1000 #change this to your user's PID
+      - PGID=1000 #change this to your user's PGID
+    volumes:
+      - /path/to/data:/config #change before the ':'
+      - /path/to/data:/uploads #change before the ':'
+      - /path/to/data:/plugins #change before the ':'
+      - /path/to/data:/config/Calibre_Library #this is where your ebooks will end up
+    ports:
+      - 8080:8080 #change before the ':' if necessary
+      - 8081:8081 #change before the ':' if necessary
+    restart: unless-stopped
+
+  calibre-web:
+    image: ghcr.io/linuxserver/calibre-web
+    container_name: calibre-web
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /path/to/data:/config
+      - /path/to/data:/books
+    restart: unless-stopped
+    depends_on:
+      - calibre
+    ports:
+      - 8083:8083
