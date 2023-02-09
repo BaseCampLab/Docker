@@ -1,0 +1,16 @@
+version: '3.6'
+
+services:
+
+  promtail:
+    image:  grafana/promtail:latest
+    container_name: promtail_monotaur
+    volumes:
+      - ./config/promtail.yaml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/log:/var/log
+    command: -config.file=/etc/promtail/docker-config.yaml
+    labels:
+      logging: "promtail"
+      logging_jobname: "containerlogs"
