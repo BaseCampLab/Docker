@@ -1,0 +1,22 @@
+version: "3.2"
+
+services:
+
+  radarr:
+    container_name: radarr
+    image: ghcr.io/hotio/radarr:latest
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    network_mode: bridge
+    ports:
+      - 7878:7878
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=America\Chicago
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /path/to/data:/config
+      - /path/to/data:/data
