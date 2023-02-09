@@ -1,0 +1,27 @@
+version: '3.3'
+
+services:
+
+  authelia:
+    image: authelia/authelia
+    volumes:
+      - ./config:/config
+    ports:
+      - 9091:9091
+    restart: unless-stopped
+    healthcheck:
+      disable: false
+    environment:
+      - TZ=America/Chicago
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - ./redis:/data
+    expose:
+      - 6379
+    restart: unless-stopped
+    environment:
+      - TZ=America/Chicago
